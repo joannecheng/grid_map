@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<meta http-equiv="content-type" content="text/html; charset=UTF8">
+<html>
+  <head>
+    <style>
+.land {
+  fill: #ddc;
+}
+
+.grid {
+  fill: none;
+}
+
+.gridbox {
+  stroke: steelblue;
+}
+    </style>
+    <script type="text/javascript" src="/public/components/d3/d3.js"></script>
+    <script type="text/javascript" src="/public/components/topojson/topojson.js"></script>
+    <script type="text/javascript" src="/public/queue.v1.min.js"></script>
+  </head>
+  <body>
+    <div id="map">
+    </div>
+
+    <script type="text/javascript">
+function search(quadtree, x0, y0, x3, y3) {
+  var validData = [];
+  quadtree.visit(function(node, x1, y1, x2, y2) {
+    console.log(node)
+    var p = node.point;
+    if (p) {
+      p.selected = (p[0] >= x0) && (p[0] < x3) && (p[1] >= y0) && (p[1] < y3);
+      if (p.selected) {
+        validData.push(p)
+      }
+    }
+    return x1 >= x3 || y1 >= y3 || x2 < x0 || y2 < y0;
+  });
+  return validData;
+}
+
+var width = 960;
+var height = 500;
+
+var projection = d3.geo.albersUsa()
+  .scale(1000)
+  .translate([width/2, height/2]);
+
+var path = d3.geo.path()
+  .projection(projection);
+
+var svg = d3.select("#map").append("svg")
+  .attr("width", width)
+  .attr("height", height);
+var mapSvg = svg.append("g")
+  .classed("map", true)
+
+var clusterPoints = [];
+var clusterRange = 20;
+var grid = svg.append("g")
+  .classed("grid", true);
+
+for (var x = 0; x <= width; x += clusterRange) {
+  for (var y = 0; y <= height; y += clusterRange) {
+    grid.append("rect")
+      .attr({
+        x: x,
+        y: y,
+        width: clusterRange,
+        height: clusterRange,
+        class: "gridbox"
+      });
+  }
+}
+
+queue()
+  .defer(d3.json, "/us.json")
+  .defer(d3.csv, "/data/2008_torn.csv")
+  .await(function(error, usData, tornadoes) {
+    if (error) throw error;
+
+    var coordinates = tornadoes.slice(0, 10).map(function(d) { return [parseFloat(d.slon), parseFloat(d.slat)] });
+    mapSvg.insert("path", ".graticule")
+      .datum(topojson.feature(usData, usData.objects.land))
+      .attr("class", "land")
+      .attr("d", path);
+
+    mapSvg.selectAll(".tornado-marker")
+      .data(coordinates)
+      .enter()
+      .append("circle")
+      .attr({
+        x: 0,
+        y: 0,
+        r: 1,
+        transform: function(d) { return "translate("+ projection(d) + ")" } });
+
+    var quadtree = d3.geom.quadtree()(coordinates)
+    for (var x = 0; x <= width; x += clusterRange) {
+      for (var y = 0; y <= height; y += clusterRange) {
+        var startX = projection.invert(x);
+        var startY = projection.invert(y);
+        var endX = projection.invert(x + clusterRange);
+        var endY = projection.invert(y + clusterRange);
+        var searched = search(quadtree, startX, startY, endX, endY);
+      }
+    }
+})
+
+    </script>
+  </body>
+</html>
