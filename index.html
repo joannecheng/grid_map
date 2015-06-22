@@ -11,8 +11,14 @@
   fill: none;
 }
 
+.tornado-marker {
+  fill: black;
+  stroke: none;
+}
+
 .gridbox {
-  stroke: steelblue;
+  stroke: #888;
+  stroke-width: 0.3px;
 }
     </style>
     <script type="text/javascript" src="/public/components/d3/d3.js"></script>
@@ -27,7 +33,6 @@
 function search(quadtree, x0, y0, x3, y3) {
   var validData = [];
   quadtree.visit(function(node, x1, y1, x2, y2) {
-    console.log(node)
     var p = node.point;
     if (p) {
       p.selected = (p[0] >= x0) && (p[0] < x3) && (p[1] >= y0) && (p[1] < y3);
@@ -57,7 +62,7 @@ var mapSvg = svg.append("g")
   .classed("map", true)
 
 var clusterPoints = [];
-var clusterRange = 20;
+var clusterRange = 5;
 var grid = svg.append("g")
   .classed("grid", true);
 
@@ -69,43 +74,64 @@ for (var x = 0; x <= width; x += clusterRange) {
         y: y,
         width: clusterRange,
         height: clusterRange,
-        class: "gridbox"
+        class: "gridbox",
+        display: "none"
       });
   }
 }
 
 queue()
   .defer(d3.json, "/us.json")
-  .defer(d3.csv, "/data/2008_torn.csv")
+  .defer(d3.csv, "/data/2010_torn.csv")
   .await(function(error, usData, tornadoes) {
     if (error) throw error;
 
-    var coordinates = tornadoes.slice(0, 10).map(function(d) { return [parseFloat(d.slon), parseFloat(d.slat)] });
+    var coordinates = tornadoes.map(function(d) {
+      return projection([parseFloat(d.slon), parseFloat(d.slat)]) || [0, 0];
+    });
     mapSvg.insert("path", ".graticule")
       .datum(topojson.feature(usData, usData.objects.land))
       .attr("class", "land")
       .attr("d", path);
 
-    mapSvg.selectAll(".tornado-marker")
+    svg.selectAll(".marker")
       .data(coordinates)
       .enter()
       .append("circle")
+      .attr("display", "none")
+      .classed("marker", true)
       .attr({
         x: 0,
         y: 0,
-        r: 1,
-        transform: function(d) { return "translate("+ projection(d) + ")" } });
+        r: 1.5,
+        transform: function(d) { return "translate("+ d + ")" } });
 
     var quadtree = d3.geom.quadtree()(coordinates)
+    var searchedCounts = [];
     for (var x = 0; x <= width; x += clusterRange) {
       for (var y = 0; y <= height; y += clusterRange) {
-        var startX = projection.invert(x);
-        var startY = projection.invert(y);
-        var endX = projection.invert(x + clusterRange);
-        var endY = projection.invert(y + clusterRange);
-        var searched = search(quadtree, startX, startY, endX, endY);
+        var searched = search(quadtree, x, y, x + clusterRange, y + clusterRange);
+        searchedCounts.push({x: x, y: y, len: searched.length})
       }
     }
+
+    var colorIntensity = d3.scale.linear()
+      .domain([0, d3.max(searchedCounts, function(d) { return d.len; }) ])
+      .range([0, 1])
+    console.log(d3.max(searchedCounts, function(d) { return d.len; }))
+
+    grid.selectAll(".grid-map")
+      .data(searchedCounts).enter()
+      .append("rect")
+      .classed("grid-map", true)
+      .attr({
+        x: function(d) { return d.x },
+        y: function(d) { return d.y },
+        width: clusterRange,
+        height: clusterRange,
+        fill: "steelblue",
+        opacity: function(d) { return colorIntensity(d.len); }
+      })
 })
 
     </script>
