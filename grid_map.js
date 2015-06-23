@@ -24,9 +24,9 @@ var GridMap = {
     var quadtree = d3.geom.quadtree()(coordinates)
     var searchedCounts = [];
 
-    for (var x = 0; x <= width; x += clusterRange) {
-      for (var y = 0; y <= height; y += clusterRange) {
-        var searched = GridMap.search(quadtree, x, y, x + clusterRange, y + clusterRange);
+    for (var x = 0; x <= width; x += cellSize) {
+      for (var y = 0; y <= height; y += cellSize) {
+        var searched = GridMap.search(quadtree, x, y, x + cellSize, y + cellSize);
         searchedCounts.push({x: x, y: y, len: searched.length})
       }
     }
@@ -42,8 +42,8 @@ var GridMap = {
       .attr({
         x: function(d) { return d.x },
         y: function(d) { return d.y },
-        width: clusterRange,
-        height: clusterRange,
+        width: cellSize,
+        height: cellSize,
         fill: "steelblue",
         opacity: function(d) { return colorIntensity(d.len); }
       })

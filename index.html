@@ -46,9 +46,7 @@ var svg = d3.select("#map").append("svg")
   .attr("height", height);
 var mapSvg = svg.append("g")
   .classed("map", true)
-
-var clusterPoints = [];
-var clusterRange = 5;
+var cellSize = 5;
 
 queue()
   .defer(d3.json, "/us.json")
@@ -62,7 +60,7 @@ queue()
 
     GridMap.drawMap(mapSvg, usData);
     //GridMap.drawPoints(mapSvg, coordinates);
-    GridMap.drawCells(mapSvg, coordinates, clusterRange);
+    GridMap.drawCells(mapSvg, coordinates, cellSize);
 })
 
     </script>
