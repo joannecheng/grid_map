@@ -50,7 +50,7 @@ var cellSize = 5;
 
 queue()
   .defer(d3.json, "/us.json")
-  .defer(d3.csv, "/data/2010_torn.csv")
+  .defer(d3.csv, "/data/2005-2014.csv")
   .await(function(error, usData, tornadoes) {
     if (error) throw error;
 
